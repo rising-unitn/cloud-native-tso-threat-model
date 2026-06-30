@@ -1,0 +1,704 @@
+Asset,STRIDE,STRIDE Category,Threat,Impact,Mitigation
+kubernetes manifests,S,Spoofing,"- Malicious manifests introduced as if they came from trusted CI/CD pipeline
+- Malicious service definitions impersonate legitimate EMS/PDC/SCADA-support services
+- Bypass of CI/CD control by submitting unauthorized manifests directly to the Kubernetes API","- the manifest is still trusted, so the system is compromised in terms of scaling and configuration of the cluster 
+- malicious work appears as legitimate EMS/PDC services
+- fake services intercept or manipulate grid processing pipelines","- enforce all deployments with a single source of truth such as GitOps controllers
+- sign all manifests and enforce signature verification at admission time
+- use of cloud-native workload identity an bind ServiceAccounts to approved workloads strictly
+- strong Kubernetes admission controllers to reject unsigned manifests and unknown service identities
+- secure CI/CD authentication"
+kubernetes manifests,T,Tampering,"- Modify container images, change startup arguments, inject backdoors, change number of replicas
+- Modify security parameters such as capabilities restrictions, seccomp or RBAC 
+- Injection of ConfigMaps or altered configuration parameters","- EMS and PDC could process altered grid data streams
+- Analytics output unreliable
+- Weaked security controls inside the cluser leading to an increased possibility of attack
+- Communication paths could be slightly altered","- using digests instead of tags
+- enforce usage of immutable deployments where possible
+- OPA rules
+- Network policy enforcement with default deny policies and explicit allow lists
+- Pod security standards (PSS) to enforce restricted profile, avoid privilege escalation and read-only root filesystem"
+kubernetes manifests,R,Repudiation,"- Lack of traceability of manifest changes
+- Missing audit trails, absense of commits or overwritement of deployment
+- Shared identity deployment, when multiple actors use the same service account or CI identity
+- Missing logs correlation between actions and identities","-Not possible to determine who deployed or modified workload
+- No linking between user and misbehavior
+- forensics investigation difficult to perform
+- critical infrastructure auditability requirements not realiable, leading to regulatory non compliance","- immutable audit logging and log storage with WORM* 
+- signed workflows with all changes committed in Git, signed and reviewed
+- no shared identities or admin accounts
+- timestamp integrity assurance
+- maintain a link between the commits and the cluster changes"
+kubernetes manifests,I,Information Disclosure,"- Exposure of cluster topology
+- Exposure of internal endpoints and services
+- Secrets leakage
+- Exposure of configurations and security policies
+- Operational workflow leakage with processing pipelines, analytics flow and system dependencies","- Attacker will have a precise idea of how the system works and how it is organized, being able to build an accurate model of grid support architecture
+- Facilitiating lateral movements and increasing the probability of successful compromisation of the operational system","- strict RBAC policy per namespace with separation of operational ans non-operational clusters
+- external secrets management
+- avoid exposing internal structure
+- encryption of data in transit and authentication of the entities sending and receiving data
+- avoid using sensitive labels or sensitive label sanitization"
+kubernetes manifests,D,Denial of Service,x,x,x
+kubernetes manifests,E,Elevation of Privilege,x,x,x
+kubernetes secrets,S,Spoofing,"- Attacker uses stolen Kubernetes secrets to authenticate as legitimate services
+- An attacker introduces malicious Secrets into the cluster that are accepted as valid credentials by workloads
+- Stolen service account tokens are reused to authenticate as legitimate workloads
+- Secrets from non-production environments are used to impersonate production services because of the weak separation","- Malicious services appear as trusted EMS/PDC components
+- Unauthorized workloads integrate into grid data pipelines
+- Attackers gain access to operational communication paths
+- Lateral movement across SCADA-support and analytics systems
+- Loss of trust in workload identity model across clusters","- workload identity management instead of static secrets
+- short lived automatically rotated credentials
+- mTLS for service communication
+- identity binding with certidicate, not static secrets
+- admission control validation, reject workloads using unapproved secrets, OPA"
+kubernetes secrets,T,Tampering,"- modification of secrets or replacement of legitimate ones with attacker controlled ones
+- secret replacement attacks
+- etcd secret store manipulation
+- corruption of backups or replica secrets for persistent attacks","- persistent compomise of the critical services
+- inability to prove who accessed, some access could also remain undetected for a log time period
+- pass the control of critical information to unlegitimate users while blocking out legitimate ones
+- difficulty in unserstanding legitimate and malicious credentials over time","- encryption of secrets at rest, use of HSM key management
+- external secre managers
+- avoid direct kubernets storage for high-critically credentials
+- sign secret payload or metadata and verify its integrity before using them
+- log all modification to secrets
+- regular integrity checks"
+kubernetes secrets,R,Repudiation,"- No traceability of who accessed Kubernetes Secrets, no audit trails or unreliable ones
+- Multiple services or users use the same secret, preventing attribution
+- No reliable record of secret state at a given point in time, in particular considering backup phases
+- Compromisation of audit trails","- Hard to take forensics analysis, so it is harder to solve smart grid issues and to understand whether the problem comes form an authorized or unauthorized user
+- Delayed incident response for the loss or unreliability of logs","- Immutable audit logs, encrypted at rest
+- correspondance between secrets and workload, user identity, service account identity
+- hash chaining technique for audit trails integrity"
+kubernetes secrets,I,Information Disclosure,"- Unatuthorized access to etcd store
+- Misconfigured RBAC secrets 
+- Pod escape enabling secret extraction
+- Dumping environmental variables
+- Backup content exposure
+- Secret data exposed through backups or cluster snapshots","- Possibility to enter and have control of different parts of the system even if unauthorized 
+- Lateral movements and persistent access
+- Persistent unauthorized access to the infrastructure","- encryption of data in tranist and at rest
+- no direct usage of secrets but only reference
+- least privilege principle
+- secret isolation based on the domain to limit risks
+- no secret logging
+- encrypted + acccess control backups"
+kubernetes secrets,D,Denial of Service,x,x,x
+kubernetes secrets,E,Elevation of Privilege,x,x,x
+cloud control plane,S,Spoofing,"- Kubernetes admin credential impersonation obtained by different possible means e.g credential theft, malware, MFA bypass, session hijacking ecc.
+- Control-plane component identity spoofing of kube-controller manager, kube-scheduler and kube-apiserver
+- etcd certificate compromise
+ - An attacker steals service account tokens used by SCADA, PDC, or supporting services and impersonates trusted workloads","- the attacker can create or delete workloads on the cluster possibly dirsuprupting communication or control services needed controlling the smart grid
+ - the attacker can modify secrets and RBAC policies, unauthorized deployment of compromised PDC or SCADA services considered legitimate and trusted
+- impersonation of a legitimate controller using its credentials, malicious creation of resources, scaling and manipulation of deployments, increasing the possibility of a DDoS on the services deployed with this technology
+- malicious etcd peer joins the cluster, partecipating in consensus mechanisms and disclosing cluster state and manipulating stored data, so increasing the possibility an attacker completing a successful attack","- strong authenticatiion with MFA for admins and operators; hardware authentication mechanisms
+- certificate rotation
+- mutual authentication for all communication from and to the control plane (e.g. mTLS) 
+- network separation, traffic filtering and monitoring mechanisms"
+cloud control plane,T,Tampering,"- etcd direct state manipulation
+- modification of scheduling mechanisms or configuration
+- modification of specific deployment configuration, such as container image, enviroment variables and startup variables
+- manipulation of secrets stored in etcd database (e.g. PMU credentials, EMS database, service mesh certificates, ...)
+- tampering of admission policies","- alteration of configuration of containers, potential denail of service for PDC or SCADA control, giving the possibility to the attacker to act without being discovered 
+- forcing scheduling of certain workload on specific nodes that could be compromised, increasing the attack surface or concentrating all the critical work on it
+- execution of malicious code, manipulation of data to analyze producing incorrect results, possibility of data exfiltration. Reporting incorrect results and taking useless and misleading operational actions on the grid
+- increased possibility of service impersonation and consequent disruption of trust chain
+- security of the system is weakened without recognizing, anabling subdle attacks and access, this helps in other preparing more complex attacks to the grid","- strict isolation of etcd and no direct admin access without controlled procedures
+- version-controlled infrastructure 
+- strong policy enforcement 
+- signed container images and trusted registry only
+- external secret management and detection of unauthorized changes"
+cloud control plane,R,Repudiation,"- Modification or deletion of audit trails such as Kubernetes audit logs, API server logs and etcd logs
+ - Unattributable administrative actions, there is no possibility of determining who modified the deployment, chagned RBAC rules and accessed secret
+- Service account withour traceability 
+- Loss of correlation between: user identities, certificates, service accounts and administrative actions","- difficulty in root-cause analysis of incidents, unauthorized actions cannot be reconducted to the user doing it
+- compliance of the critical systems and accountability are lost
+- audit log analysis becomes untrustwothy and useless","- Kubernetes logging 
+- fine-grained API audit policies
+- immutable logging and append-only storage
+- named admin accounts only
+-no shared admin identities
+- certificate lifecycle tracking
+- trusted time source and consisstent timestamps"
+cloud control plane,I,Information Disclosure,"- secret extraction from etcd
+- obtained read access to API server or etcd
+- extraction of controller configuration
+- disclosure of backup data or etcd snapshots","- mass credential exposure, with potential critical consequence with the access to many different services and part of the system such as SCADA control service management or PDC manager
+- exposure of critical aspect of the sytsem such as workload topology, operational services, network architecture and service communication services that can help the attacker in gaining infrastructure intelligence
+- gain of interlligence to better target SCADA and EMS
+- long term intelligence leakage","- encryption at rest for etcd and backups
+- mutual TLS for important data communication
+- RBAC policies and least privilege principle
+- secret access monitoring
+- external secret vault"
+cloud control plane,D,Denial of Service,"- API server saturation
+- etcd resource exhaustion due to excessive write operation on the system
+- scheduler starvation by generating a huge number of pending pods
+- many resource modification during operational work induces a long reconciliation time","- control plane responsiveness is delayed, PDC and SCADA recovery could be upated or recovered with delay or incorrectly
+- delay in consensus mechanisms, cluster state becomes unreliable and reconciliation requires an increasing amount of time and modification
+-  increased time needed for scheduling, resulting in a delay of critical services such as SCADA low level control or PDC analysis
+ - delay in the deployment of service and resources lost in useless modification","- resource management with API rate limiting, resource quotas and admission controls                                                        - redundant etcd cluster 
+- multi-node control plane (federation mechanism)
+- performance monitoring
+ etcd health monitoring
+- API latency monitoring
+- regular backup testing"
+cloud control plane,E,Elevation of Privilege,"- service account to cluster admin elevation of priviledge obtained by exploiting excessive permission vulnerabilities 
+- compromise of admission controllers, such that every request is managed by the attacker
+- scheduler controlled by the attacker
+-modification of RBAC policies and access configuration by modifying etcd stored configuration files","- cluser controlled by the attacker, who has the power to completely compromise SCADA control and PDC workloads, compromising low level control of the grid sanity
+- potential distuption of the whole system
+- sensitive workload controlled by the attacker and operated on compromised nodes
+- persistent access to the system and governance over the services that this technology supports: SCADA control and PDC","- RBAC policies with strong role separation with periodic reviews and least priviledge principle
+- disabling of automatic token mounting
+- MFA + PAM and dedicated admin environment                                               
+- continuous monitoring for privilege escalation detection and RBAC changes                                                             
+- restriction of privileged container and host namespaces access"
+runtime execution service,S,Spoofing,"- certificate, tokens and node credentials allow an attacker to impersonate a legitimate node
+- malicious process impersonating a legitimate service ( PDC, SCADA control)
+- compromised container accesses projected service-account tokens
+- runtime container spoofing, the attacker impersonates containerd, kubelet, runtime plugins or node agents","-unauthorized nodes can join the cluster and malicious workload is considered trusted, fake PDC processes can be introduced
+- unauthorized API access., false telemetry submission, lateral movement into OT applications 
+- increased possibility of reconnaissance","- mTLS between kubelet and control plane
+- automated certificate rotation and short-lived credentials
+- workload identity federation
+- secure node enrollment
+- detection of node identities and certificate usage monitoring"
+runtime execution service,T,Tampering,"- runtime container modification
+- modification of filesystem
+- socket data changed before being received  
+- telemetry data modification before elaboration  
+- modification of mounted secrets (certificates, API tokens, credentials, etc.)","- alteration of SCADA and PDC logic, compromisation of computational algorithms 
+ - full nome compromised, malicious workload can be executed
+- different execution parameters, policy compromisation
+- elaboration of incorrect data leading to an incorrect state estimation
+- authentication failure, service disruption","- read-only root filesystem and immutable containers
+- minimized and signed images form trusted registry only
+- runtime threat detection and container behavior monitoring
+- workload isolation
+- file integrity and runtime integrity monitoring"
+runtime execution service,R,Repudiation,"- container manipulation without attribution of changes bypassing kubernetes audit mechanisms
+- attacker log manipulation (container logs, runtime events, execution traces)
+- compromised kubelet reports healthy status despite malicious modifications and changes","- loss of accountability
+- loss of security compliance
+- misleading identification of what device or user caused the failure
+- modification and real state of the system remains undetected 
+- increased delay in the time needed for understanding the root cause of incidents
+- audit log analysis becomes useless because the logs are not trustworthy","- audit logs for all the components (e.g. kubernetes, runtime and nodes)
+- centralized logging system and remote log forwarding
+- signed deployments and traceable GitOps pipeline
+- consistent timestamp information from trusted sources"
+runtime execution service,I,Information Disclosure,"- extraction of mounted secrets (API credentials, service account tokens, credentials)
+ - operational memory scraping for all workloads (SCADA contoller, PDC)
+- container cache disclosure 
+- runtime escape exposes many important info about other containers, host filesystem and metadata","- service impersonation, credentials are used to compromise other services
+- leakage of operational intelligence, grid-state reconstruction, critical infrastructure intelligence gathering
+ - possibility to use reverse engineering to understand algorithms used in the smart grid, intellectual property theft
+- potential compormise of other services on the same machine increasing the probability of increasing the damage area","- secure secret management e.g. external secrets vaults, dynamic credentials and secret rotation
+- encryption at rest and in transit
+- runtime isolation with namespace and sandbox
+- RBAC and least privilege principle
+- DLP controls and secret access and modification monitoring"
+runtime execution service,D,Denial of Service,"- exhaustion of target machine resources in terms of CPU, memory or scheduling 
+- container termination attack disrupting SCADA and PDC workloads and analysis
+- certificate login failure overwhelms the authentication component, kubelet and identity providers
+- storage and volume exhaustion
+- frenquent systems reboot of critical services leading to a loss of observability and control of the grid","- processing latency of PDC and SCADA increases such that the attacker can have a larger impact without being discovered
+ - the killed container service does not work until the system realises that it is missing, service is delayed also rebooting requires time. It can be part of a larger coordinated attack
+- nodes are disconnected from the service, resilience is reduced","- resource quotas, limits and priority classes
+- redundant worker nodes and multi-node deployments
+- runtime protection with PID limit and container count limit
+- runtime health monitorning
+- automated restart policies"
+runtime execution service,E,Elevation of Privilege,"- container escape 
+- Kubelet credential abuse
+- containers running in priviledge mode exploited to grant access on the host
+- runtime vulnerability expolitation","- permissions granted from the container to the host, that could impact all the services running on the same cluster (e.g. data processing and analysis in PDC)
+ - workload manipulation resulting in algorithm compromisation, this could cause having too many false alarms or false positives","- non-toot containers and minimal set of linux capabilities for every user
+- runtime isolation with Seccomp, SELinux and/or AppArmor
+- deny privileged mode by default
+- hardened containerd configuration and secure kubelet configuration
+- vulnerability management with image scanning, instant patching and node hardening
+- runtime threat detection and privileded account monitoring"
+federation service,S,Spoofing,"-malicious federation member impersonates a legitimate High-Level PDC or a trusted EMS by using spoofed, stolen or crafted certificate valid for joining the network
+- impersonating the host cluster (coordinator) by convincing all the members that it is the legitimate one by spoofing its token
+- attacker impersonate federation service responsible for state synchronization, resource propagation and operational data exchange
+- attavker impersonates a backup EMS or high-level PDC","- attackers impersonating high-level PDC can introduce false data and spread false workload to other high-level PDC or EMS
+- by impersonating the host it is possible to deactivate all the workload an thus avoid the computation of all high-level PDC and EMS. other options involve introducing malicous containers for example exfiltrating alla data or useful to mascherate attacks to steal energy","- strong identity mangement with mechanisms such as mLTS , PKI and hardware protected keys
+- federation trust controls with explcit whitelists, certificate pinning
+- automated certificate rotation and HMS certidicate storage
+- certificate anomaly detection and duplicate federation identities"
+federation service,T,Tampering,"- An attacker with access to the Host cluster modifies the configuration or specific resource specs, causing unauthorized state changes across the entire fleet 
+- malicious work injection flows by modifying critical CRDs 
+- modification of failover and redundancy information  
+- creation of persistent backdoors in the high-level PDC and EMS to read all information
+- introduce malicuous containers and computations 
+- modification of certificates, trust stores, auth tokens and federation secrets","- persistent possibility to access the system and information of high-level PDC and EMS using backdoors
+- malicious workload executed on nodes, less resources to main task of the devices, resulting in delays in computation ans system observability
+ - by changing alarm threshold, important alarms could be missed, enabling energy stealing or smart grid disrutpion","- version controlled-policies
+- signed federation and workloads manifests
+- policy enforcemnet before propagation 
+- multi-party approval for federation wide changes
+- drift and unauthorized configuration change detection
+- network segmentation"
+federation service,R,Repudiation,"- lack of centralized audit logs
+- lack of correspondance between credentials and actual devices (credential spoofing)
+- untracked federation configuration channels
+- Orphaned Actions by compromised controllers (ghost commands)
+- unrealiability of federated audit logs or incoherent federated cluster logs
+- impossibility to reconduce configuration changes or incorrect data transmission to a specific federated cluster","- loss of accountability, no guarantee in communication and data transmission source as well as modification. harder to find problems and incidents in the smart grid 
+- execution of useless tasks to delay the core functions of EMS, high-level PDC without clear tracking of it
+- loss of observability for many high-level PDC so for many regions, the attacker can compromise a wider-area of the grid without being detected
+- delayed response to incidents in the system and harder to find root-cause of incidents or compromised devices","- centralized logging system
+- correlation of federated cluster logs
+- append-only logs
+- strong certificate management, with rotation and hardware device authentication
+- reliable time sourve usage"
+federation service,I,Information Disclosure,"- during synchoronization process there is the possibility to share sentitive data with amon host and members, for example secrets or credentials
+- misconfiguration of RBAC policy letting clusters read sensitive information
+- federation status disclosing important topology information and weak points","- possibility of lateral movements from one high-level PDC to another or to other components of the system if credentials are disclosed                                                           - information about federation, weak points and problems of the smart grid, facilitating attacks                                                                     - full compromise of federation system","- secure secret management e.g. external secrets vaults, dynamic credentials and secret rotation
+- encryption at rest and in transit
+- runtime isolation with namespace and sandbox
+- RBAC and least privilege principle
+- DLP controls and secret access and modification monitoring
+- federated log sychronization checks"
+federation service,D,Denial of Service,"- flooding of API server from compromised members to exceed computational resources                                            - trigger too often the reconciliation loop
+- network communication disruption between host and members
+- malformed objects or malwares consuming computational power","- potential block of the high-level PDC and EMS services, so loss of osbervability of the grid, culminating in the inability to assess if certain operations are needed and less resilience to attack because of inability to retrieve them
+- loss of consistency among the high-level PDC and EMS requiring further aligment requiring time","- federated specific RBAC policies with applciation of least privilege principle
+- TLS encryption for data in transit
+- encryption of data at rest
+- synchronize only required information 
+- data access monitoring and DLP controls"
+federation service,E,Elevation of Privilege,"- compromise of the federation service account by using cluster-admin permissions
+- misconfiguration of RBAC policies for cluster
+- exploitation of software vulnerabilities grantic access to the control plane of the federation members
+- entering using spoofed secrets or credentials/tokens","- admin access to the federated control plane, with thepossibility to send malicious workload to other members or modify elaborated data                                           - creation of priviledged workloads consuming resources to computation available and delaying the observability of the system and the consequent solving of incidents                                                                                   - control of the EMS and high-level PDC is given to a unauthorized user (cia compromised)","- communication rate limiting, sychronization quotas
+- resoruce governance for CPU and memory
+- high availability and redundant controls
+- latency monitoring
+- federated health monitoring
+- isolation of failures and compromised clusters"
+IAM services,S,Spoofing,"- admin impersonation using stolen/spoofed/crafted credentials or tokens 
+- spoofing the admin role for policy engine, the attacker can change the permissions for some groups or users and also change the algorithms for checking access grant at all the levels
+- service account impersonation (e.g. federation service, kubbernetes workload, SCADA, PDC and EMS services
+- identity provider spoofing","- attacker can act as a legitimate user on the system because of the mismatch between credentials and identity. it can compromise the system at different levels based on the target system (EMS and SCADA are the most critical for their operational control ability) 
+- being able to modify the permissions of all the groups and the policies can create cascade attacks on the smart grid and lose control of it completely; changing the underlying algorithm for accessing the system could facilitate impersonation of devices or user","- MFA for all privileged users and phising resistent authentication
+- PKI identities and mutual TLS
+- crential protection with rotation and secure token handling
+- short-lived tokens
+- detection of anomalous logins of change in configuration
+- privileged account monitoring"
+IAM services,T,Tampering,"- unauthorized modification of RBAC policies, role definition, permissions assignment and access rules
+- role assignment tampering in terms of user-to-role mapping, group membership and service-acocunt permissions
+- authentication mechanisms manipulation in terms of trust relationships, token validation and authentication workflows
+- identity store tampering
+- log tampering
+- federation trust configuration tampering","- compromisation of accessibility system, unlegitimate user can log in the entire grid
+- compromisation of the logic for performing checks can affect the security by introducing in the system unlegitimate users without finding it out","- version controlled policies
+- approval for critical IAM configuration changes
+- integrity controls with cryptographic signing of policies
+- configuration integrity monitoring
+- strong separation of duties
+- monitoring of RBAC modifications and unusal role assignment"
+IAM services,R,Repudiation,"- user performs a malicious action and denies it
+- admin assigns a sensitive role and denies performing the change- deletion of logs of actions performed by user and admin, lack of proper protection of cryptographic methods","- lack of accountability for the changes to configurations, accesses and rules that potentially leads to strong cyber attacks
+- increased difficulty in solving incidents because of the lack of audits
+- inability to easily detect credentials spoofing and so block unlegitimate accesses 
+- lockout of legitimate users an service accounts with the potential of disrupting the supported systems functionalities, so delaying incident detection and weaknesses of the grid","- centralized, immutable and append-only logging systemdifferent service if federated with particular attention to privileged activities
+- no shared accounts
+- privileged accounts monitoring
+- role assignment tracking"
+IAM services,I,Information Disclosure,"- unauthorized access to the policy structure (e.g. roles, groups and associated permissions) and leaking sensitive user-to-role-to-permission mappings
+- disclosure of identitiy, authorization and authentication check algorithms 
+- discosure of information about audit logs","- information useful for the attacker to perform successful attacks or spoofing 
+- possibility for the attacker to understand sensitive information about devices, users or admin
+- understanding paths for performing elevation of priviledge and cascading attacks","- least privilege principle
+- strong encryption of identity repositories and logs
+- limit exposure of internal structures of authentication machines and logical flow
+- detection of abnormal reads
+- DLP controls"
+IAM services,D,Denial of Service,"- flooding the policy engine with authorization requests
+- locking out legitimate users by deleting core roles/mappings
+- providing incorrect format for data requested such that the system is blocked
+- failure of one single microservice for authentication leading to the complete disruption of authentication","- disrupting the policy engine and access control mechanism can prevent legitimate users and devices to log on the system, potentally delaying or blocking important alarm checks needing human intervention or processes needing new device log in. This attack can be part of a more complext strategy to take control of the whole smart grid.","- redundant IAM services and redundant identity providers
+- rate limiting, API quotas, sessions and requests limiting
+- authenticaion latency monitoring
+- emergency access procedures"
+IAM services,E,Elevation of Privilege,"- vulnerabilities in the software underlying the checks                                   - misconfuration of policies, groups or permissions on the machines (e.g. circular role dependencies)
+- privilege escalation through role chaining
+- unauthroized role assignement",- being able to perform an elevation of priviledge on the access control architecture can enable a normal user to perforrn dangerous actions such as modifying permissions and algorithms leading to the attacker controlling this part of the system and so enabling other dangerous actions on the system.,"- role separation with minimal permission for each role
+- periodic RBAC roles and policies review
+- credentials rotation
+- continuos monitoring of the system
+- policy validation with automated RBAC analysis and detection of incorrect permissions"
+Virtualization Infrastructure,S,Spoofing,"- hypervisor manager identity spoofing by finding credentials, API keys or tokens with phishing, credential stuffing or other methods
+- VM identity spoofing, cloning of a legitimate VM with all its certificates and impersonating a legitimate service
+- service account impersonation by compromising credentials or tokens
+- virtual network device spoofing impersonating virtual routers, gateways, SDN controllers, or DNS services inside the virtual infrastructure","- by having hypervisor management access, it is possible to create and delet VMs, access snapshots and also modify network communication, so for example it is possible to deactivate the VM doing auditing and monitoring of the high-level PDC or alter analytical workload
+- all the information are disclosed to an unauthorized service and wrong or incorrect analysis can be considered as valid, this can happen with all the service acting operating using the VMs","- identity and access management with MFA, PAM, JIT, strong password policies
+- disabling shared accounts
+- certificate based authentication with mutual TLS protocol usage
+- network controls with private management networks and workload identity protection"
+Virtualization Infrastructure,T,Tampering,"- tamper baseOS inserting a backdoor
+- compromised hypervisor modifies the memory of the VM compromising data truth and consequenty its analysis results
+- compromised VM or communication channel changes the data before saving it on the cloud storage
+- VM snapshot manipulation
+- network route manipulation 
+- modificatio of virtual disks, shared storage volumes or cloud storage content","- insertion of backdoors such that the attacker can enter the system and act on it without being detected, information disclosure issue
+- data analyzed by the high-level PDC could be tampered by the hypervisor if malicious leading to wrong results of analysis
+- data used for long perspective statistics could be wrong and misleading 
+- being a basis for recovery, the compromised snapshot could be used to recover the machine, if backdoors or vulnerabilites are inserted, tehy can be used by the attacker to enter the system in its core functionalities (e.g. monitoring), possibility of persistent compromise
+- sending data to the attacker itself along without being noticed","- secure image life cycle with image signing, verified and secure boot, trusted image repo and approval processes
+- file integrity moniroting with hashes and continuous integrity checking
+- storage protection with write-only backups, immutable snapshots 
+- network security with configuration validation, route change approval and SDN hardening
+- infrastructure as a code review"
+Virtualization Infrastructure,R,Repudiation,"- attacker modifies or deletes audit logs to conceal unauthorized activities
+- alteration of timestamps for events
+- administrative actions repudiation
+- a user denies deploying, modifying, or approving a VM, image, Kubernetes workload, or network policy
+- an attacker uses stolen credentials and later denies performing management actions","- loss of accountability of actions
+- loss of correspondance between identity and credentials used
+- harder to permanently block unlegitimate users or accounts
+- loss of correspondance between attack or failure time and actions causing incidents, the attacker can perpetrate the attack wihout being discovered
+- loss of accountability for deployment creation and modification","- centralized logging in immutable llog repositories, integration with a realiable SIEM
+- cryptographic protection of logs with signing, hash chaining and digital signatures
+- timestamp synchronization from protected and redundant time sources
+- stong authentication with MFA, individual user accounts and session recording for privileged accounts
+- audit trails for all the components of the system"
+Virtualization Infrastructure,I,Information Disclosure,"- hypervisor compromisation allows information disclosure
+- snapshot theft
+- traffic inspection and mirroring
+- cloud storage credential theft
+- information leakage through CPU cache sharing, speculative execution vulnerabilities, or memory deduplication mechanisms
+- unauthorized access to cloud instance metadata services exposes credentials and configuration","- exposure of PMU and PDC streams as well as information about weaknesses of the system, problems discovered in monitoring and auditing of the machine. This could help in planning combined attacks
+- exposure of current state of the system in all its parts, also credentials ecc
+- traffic inspections to find paterns and interesting informaiton 
+- access to the whole cloud storage profile and project","- encryption at rest and in transit with a strong key management storage
+- snapshot encryption, access control and retention policies
+- secure secret management with vault solutiions and frequent rotation
+- snapstor protection with encryption, strong access control and retention policies
+- network protection with segmentation an mTLS
+- least-priviledge IAM"
+Virtualization Infrastructure,D,Denial of Service,"- VM and hypervisor resource starvation (CPU, storage and I/O)
+- management APIs out of service
+- virtual network partitioning due to the change of routing tables or malfunctioning in networking services","- high-level PDC services not working until CPU and storage are available again, delay in observability of the smart grid and consequently in operational actions to take to re-establish the system correctness
+- impossibility to move workload, change orchestration, recovery and scaling, reduced resilience of the high-level PDC
+- services do not communicate as expected and since the data cannot be passsed, the analysis and observability is not guaranteed","- resource governance with CPU quotas, memory limits , stprage and namespace quotas
+- high availability with hypervisor clustering and multi-region architectures
+- redundant networking, storage and failover procedures
+- rate limiting and API throttling
+- resource anomaly detection, performance baselines and capacity monitoring"
+Virtualization Infrastructure,E,Elevation of Privilege,"- VM escape reachin hypervisor control exploiting vulnerabilities in virtual hardware, software or libraries
+- use high permission on the machine, for example the ones related to the monitoring part to compromise the whole system","- possibility to compromise all the services having a VM on the same host and controlled by the same hypervisor, by escaping the monitorng system, it is possible to impact on the monitoring and auditing service
+- compromisation of the cloud-storage part","- least privilege qith RBAC policies, fine-grained IAM and separation of duties
+- workload isolation with sandboxed containers and VM isolaiton policies
+- attack surface reduction
+- privileged access control wuth PAM solution and privileged account monitoring
+- continuous vulnerability scanning, configuration compliance and periodical penetration testing"
+Service mesh and Network management services,S,Spoofing,"- attacker impersonating control mesh controller e.g using compromised certificates; Sidecar Hijacking
+- PDC workload impersonation spoofing the credential of another workload
+- IP spoofing used to bypass access control lists in ingress controller; host spoofing or HTTP header spoofing
+- token of JWT token spoofing for API gateway","- bypass of service level authorization, lateral movement and trusted service impersonation
+- false PMU and PDC data injection leading to incorrect state estimation and potential incorrect operations
+ - routing of malicious traffic to or attacker generated data to internal services","- strong workload identity with unique identities for each service and hardware backed identities where possible
+- mTLS between workloads, certificate validation and certificate pinning for critical services
+- gateway security with strong authentication
+- privileged access management and MFA"
+Service mesh and Network management services,T,Tampering,"- modification of routing policies such that data streams do not reach their destination (e.g. PMU data not reaching PDC, PDC not reaching high-level PDC, ...) or reach incorrect ones or reaches malicious/undesired locations ( data exfiltration )
+- authorization policies tampering
+- rule about load balancing handling","- loss of observability of the infected part of the smart grid, no information about its state and consequently on the actions to take to solve potential issues 
+- internal system data sent to malicious entities  
+- unlegitimate requests or data are authorized
+- disrupton of load balancing service potentailly causing denial of service of the target part
+- denial of service for traffic redirection","- configuration integrity, signed configurations, configuration version control and multiple approval process
+- automated policy validation and approval workflows
+- continuous configuration monitoring and drift detection
+- strict network policies ans segmentation"
+Service mesh and Network management services,R,Repudiation,"- logs about communication are compromised or deleted
+- data or requests are done using common credentials or names 
+- configurations, permissions and policies are modified without logging who did the changes and when 
+- cetificate management repudiation, when an administator denies performing actions concerning certificates","- accountability of changes is lost 
+- accountability of who sends the data is compromised so that there is no guarantee that they are legitimate
+- potential loss of compliance for data exfiltration
+- malicious actions are not logged and not discovered rapidly, such that an attacker has more time to implemet malicious actions
+- slower root-cause incidents research","- immutable and centralized logging system with log retetion policies
+- individual account only, in particular no shared admin accounts and unique workloads identity
+- hash chaining an cryptographically signed logs
+- protected timestamp source
+- admin session recording, double approval workflows"
+Service mesh and Network management services,I,Information Disclosure,"- attacker access PDC traffic because of incorrect network policies 
+- access to mesh configuration, topology and operational dependency
+ - misconfigured gateway sending sentive data to malicious parties
+- improper isolation between cloud environments exposes operational data belonging to different security domains
+- API gateways or proxies reveal software versions, internal addresses, or infrastructure details useful for further attacks","- malicious data redirection leading to attacker knowing the system topology and parameters
+- intelligence exposure with configuration disclosure
+- increased probability of successful attacks 
+- regulatory compliance issues","- encrytption of data in transit and at rest
+- secure key management
+- mutual authentication in communication
+- zero-trust communications
+- network segmentation of the different operational domains
+- secure certificate storage
+- sensitive field masking and data minimization"
+Service mesh and Network management services,D,Denial of Service,"- certificate authority for service mesh not available
+- API gateway is overwhelmed by an eccessive number of requests
+- proxy service overload due to malformed requests","- certificate expiration and impossibility for service accounts to prove their identity and use the system (PDC isolation, SCADA control isolation)
+- API gateway does not respond properly to requests, communication of telemetry data is delayed decreasing the control and observability on the system 
+- cloud architecture unreachable, resulting in delay in state estimation and analysis","- high availability of mesh control plane, gateways and CA infrastructures
+- resource control such as connection limits, rate limit and request quotas
+- monitoring of endpoints and strong desaster recovery mechanisms
+- retry limits and timeout controls"
+Service mesh and Network management services,E,Elevation of Privilege,"- compromisation of mesh service account 
+- workload communicating directly without authorization, authentication, control
+- comprimisation of CA 
+- bypass of mesh security controls
+- compromise of gateway management interfaces grants control over exposed services","- control in routing, policy definition, security
+- malicious workloads considered as legitimate could contain false data ecc.
+- whole trust chain is compromised, unlegitimate service account could enter the system or reach admin priviledges","- minimal RBAC permissions, separation of duties and dedicated administation roles
+- token rotation and short-lived credentials
+- offline CA root and intermediate hierarchy
+- service mesh enforcement gateways
+- privilege escalaition testing and policy compliance monitoring"
+CI/CD pipeline,S,Spoofing,"- developer impersonation ( credentials, VPN, MFA tokens, ecc.)
+- impersonation of a legitimate CI worker
+- depoyment controller spoofing
+- signing service identity spoofing","- by spoofing controls or credential of admin accounts, the attacker can introduce bugs, backdoors and vulnerabilities in the system, with the potential of compromising the system
+- an attacker accessing the CI/CD repository can potentially disclosure the code, secrets and credentials.  this can dispatch intelligente about the logic and configuration of SCADA, PDC and communication services
+- execution of malicious code
+- bogus and malicious code is deployed because its origin appears to be the authorized system, malicious EMS, PDC control
+- compromise signing procedures potentially deploying unreliable code","- MFA for developers and administrators
+- PAM for privileged users
+- SSO and centralized IAM
+- short-lived credentials
+- mTLS between pipeline components
+- workload identity mechanisms
+- trusted package sources and repository pining
+- signed commits and tags"
+CI/CD pipeline,T,Tampering,"- change of the source repository to introduced backdoors, hidden functions or conditional logic
+- compromisation of the script used for building the code
+- poisoning of dependencies such as third party library which are know to be used
+- container image tampering
+- security tests, unit tests, or compliance checks are bypassed or falsified","- injection of malicious code in the compilation if the code, while the soruce repository remains clear and the code in it is trusted. Deployment of malicious code with potential issues and compromised services
+- attacker has methods to enter the system, read data, gain intelligence about the system and so perform better attacks
+- pipleine imports automatically issues that can be exploited, compromisation of telemetry analysis, data exfiltration etc.
+- block reboot and patching","- software supply chain security and supply chain attestation
+- signed commits, protected branches and mandatory reviews, multiple approval process
+- singed image and image scanning
+- immutable registries 
+- approved repositories and dependency scanning
+- immutable runners
+- IaC security scanning"
+CI/CD pipeline,R,Repudiation,"- removal or modification of evidence linking software vulnerabilities to commits or users performing them 
+- forgery of approval records
+- artifact origin repudiation
+- security test repudiation","- loss of accountability of actions 
+- loss  of correspondance between identity and credentials used
+- harder to permanently block unlegitimate users or accounts
+- loss of correspondance between attack or failure time and actions causing incidents
+- harder to understand who changed the code in malicious version
+- harder to detect problematic approval processes","- immutable and centralized logging with SIEM integration
+- no shared accounts
+- session and approval recording
+- signed commits, releases and build attestations
+- mandatory reviewers
+- separation of duties
+- timestamp protection"
+CI/CD pipeline,I,Information Disclosure,"- running secrets are extracted and disclosed (e.g. credentials, configuration, deployment tokens)
+- source code theft, exposure of algorithms, processing lofic and detection mechanims
+- compromisation of signing key infrastucture
+- diclosure of IaC repository
+- build log and supply chain metadata disclosure","- possibility to attack or infiltrate in other parts of the whole smart grid environment
+- loss of proprietary data, technologies and strategies that could help attackers in elaborating successful attacks
+- possibility to sign compromised code and make it look legitimate, execution of untrusted software compromising the base functionaliries of EMS, PDC and SCADA controls 
+- exposure of cloud topology, communication paths, monitoring structure potentially leading to successful attacks thanks to the knowledge of the topology
+- with compromised credentials, it is possible to have access to the code deployed, exfiltrate procedures and algorithms","- short lived credentials, secret rotation, dynamic secrets and vault solutions
+- encryption of configuration at rest and in transit 
+- least privilege prinicple and role separation
+- secret masking and logging"
+CI/CD pipeline,D,Denial of Service,"- build infrastructure overload by flooding it with jobs
+- unavailability of code storage platform
+- GitOps synchronization failure
+- deletion of CI/CD pipeline configuration
+- logs, artifacts, or caches consume storage resources, causing pipeline failures
+- loss of synchronization between desired and deployed states prevents updates or recovery procedures","- delay in installation of security patches for vulnerable components, increasing the time the vulnerability can be exploited and used by an attacker
+- dealy in reconfiguration of the system after attacks related to configuration changes or malicious code execution leaving the system in an unusable state or critical EMS and PDC functionalities altered to disrupt the desidered state analysis","- redundant Git servers and replicated registries
+- high availability deployment controllers
+- resource controls such as job quotas, concurrency limits and rate limiting
+- artifact caching and local mirroring of resources
+- configuration backups
+- queue monitoring, capacity monitoring and storage monitoring"
+CI/CD pipeline,E,Elevation of Privilege,"- developer gaining deployment credentials exploiting misconfigured pipeline permissions
+- compromisation of signing service","- unauthorized modification of PDC and SCADA service exploiting misconfigured pipeline permissions
+ - compromised versions are not distinguishable from legitimate ones since they are all signed","- fine frained RBAC
+- separation of duties
+- dedicated service accounts
+- immutable build environment
+- key rotation
+- multi-party approval
+- supply- chain security assessment"
+container registries,S,Spoofing,"- attacker impersonates a legitimate developer using stolen registry credentials and inserts malicious versions of the container images for example inserting backdoors
+- malicious registry mirrors impersonate trusted registries and provides compromised images
+- DNS poisoning attack redirecting to a fake registry endpoint
+- signing service spoofing","- unauthorized image download, potentially propritary images revealing important information about the handling of the components of the smart grid and vulnerabilities increasing the probability of completing successful attacks
+- upload of compromised images containing backdoors and if installed, giving the attacker the possibility to enter the smart grid in the components using those images,or sending data to unauthorized parties
+- authorized credential theft
+- supply chain compromise: the malicious images could be deployed for EMS, PDC and SCADA services disrupting their critical functions
+- once the malicious changes have been applied they can be used for performing lateral movements, e.g from high-level PDC data analysys to high-level PDC monitoring system","- strong identity protection with MFA, SSO, PAM and short-lived credentials
+- mTLS between registry and client to for ensuring mutual authenticationo
+- registry validation, certificate validation and repository pinning
+- image signing, trusted signing roots and precise signature verification
+- protected discovery service 
+- DNSSEC"
+container registries,T,Tampering,"- modification of images stored in the container, inserting backdoors or changing manifests and metadata
+- manipulation of the vulnerability scan service to allow the replacement of trusted images with  malicous ones
+- change of the state of approval of images from malicious to verified","- deployment of compromised workload, mining the stability of the whole architecture because it could have different kind of vulnerabilities for example disclosing sensitive information or opening backdoors
+- compromising the vulnerability check service means exposing the system to a high-level of risk potentially introducing and not detecting important issues
+- potential compromisation of the whole system using compromised images or even just one of them","- image integrity: signed images, digest-based deplyment
+- SBOM generation and provenance attestation
+- indipendent vulnerability scanning and continuous process
+- multiple approval for critical changes
+- backups, integrity monitoring and audit trails"
+container registries,R,Repudiation,"- no proof that a deployer pushed or modified a certain image
+- no proof that the admin has introduced or changed something in configuration or access management
+- CI/CD operating under a shared identity, so there is no proof of who did what
+- unreliable or compromised logs","- no accountability for compromised or vulnerable images
+- no accountability for configuration changes that may remain hidden and let an attacker compromise the critical services
+- delayed incident response extending the exposure of critical components
+- compliance issues","- immutable and centralized logging system with append-only technology
+- individual accounts not shared 
+- signed commits and images
+- admin session monitoring
+- trusted time synchonization system"
+container registries,I,Information Disclosure,"- unatuthorized access to private images
+- leakage of secrets contained in images
+- exposure of vulnerabilities or discovery them by analyzing the code
+- disclosure of operational solutions applied based on system weaknesses
+- exposure of images metadata that can reveal grid structure or code orgnaization or core idea","- disclosure of information that could be usefult for an attacker to have a good understanding of the system, such as configuration, architecture, weaknesses or operational solutions, making easier a successful attack on the grid
+- exposure of configuration code that can be used for reverse engineering processes
+- loss of compliace for sensitive data exposure
+- credential compromise can lead to the attack or compromisation of other components, causing lateral movements to critical services such as SCADA conrtol","- RBAC and least privilege principle
+- secret mangement in external vaults
+- secret scanning and avoidance of embedded secrets
+- restict repository visibility
+- access auditing and DLP mechanisms"
+container registries,D,Denial of Service,"- flooding the API registry with requests
+- exhausting memory by uploading too many images which are useless
+- database corruption because of a malware,  vulnerability exploitation or physical failure
+- garbage collection misuse
+- dependency service failure e.g. authentication, database, object storage","- images cannot be uploaded or downloaded, so new application or update to existing ones cannot be provided
+- CI/CD pipeline not working, blocking patching of vulnerabilities and updates of systems, making it harder to recover from failures or successful attacks, in a smart grid environment the attacker could exploit the vulnerability for more time without being blocked
+- delayed analytics, degraded visibility and monitoring and consequently increased operational risk","- high availability consisting in replicated registies with geo-redundancy and high availability databases
+- API rate limiting and resource quotas
+- offline backups
+- local caching 
+- related system high-availability and resource protection"
+container registries,E,Elevation of Privilege,"- exploit of misconfigured registry permission or compromisation of the CI/CD admin priviledges
+- exploitation of software vulnerabiltiies in the architecture handling the registry
+- weak security policies for signing entities or credentials not properly secured","- full control of the image repo, ability to publish and also delete trusted images, ability to change the permisions and make the files public
+- potential disclosure of important information, availability and also integrity of the database, potential impact on the smart grid operational plane if this is not properly discovered by the actors.","- properly configured RBAC policies with strong and proper role separation, deny-by-default
+- MFA, SSO and PAM
+- dedicated service accounts and workload identities 
+- strong separation between development, staging and production
+- registry hardeining
+- proper vulnerability patches
+- zero-trust communication"
+cloud storage,S,Spoofing,"- Attacker uses stolen or forged cloud credentials to access storage
+- Compromised service account impersonating a legitimate EMS or high-level PDC to read and write data
+- Corss-account trust misconfiguration enabling impersonation
+- API key leakage from CI/CD repo or other sources","- unauthorized access to data stored, telemetry, results of smart grid analysis, telemetry data, events happened, hisotry of the system, topology of the network, configuration. This data can help in understanding the vulnerability of the grid
+- unauthorized upload and download of data, able to change the history of the grid
+- compliance violation
+- lateral movement into other cloud environment","- MFA for administrators
+- short-lived credentials
+- workload identity with proper token rotation
+- fine-grained IAM roles and separation of service identities
+- mutual authentication for data communication (e.g. mTLS)
+- resticted trust relationships with explicit role assumption"
+cloud storage,T,Tampering,"- alteration / deletion / creation of stored objects about grid history, telemetry data, events, topology of the grid, metadata
+- alteration of storage policies","- corruption of data, impacting further statistics and measurements computed on the grid, potential to impact dependent applications such as control of the grid levels and stability based on old parameters                                                               - alterating the storage policies, the data could be disclosed or lost unintentionally, causing compliance problems and facilitating attackers","- immutable backups
+- object lock
+- versioning 
+- checksums, cryptographic hashes for data integrity
+- encryption 
+- signing for critical datasets
+- offline backu copies"
+cloud storage,R,Repudiation,"- user or service denies modifying, inserting or deleting data 
+- admin denies modifying storage policies and configuration
+ - missing or altered audit trails upon malicious activities 
+ - use of shared service accounts obsuring accountability","- compromised non reputation and accountability
+- inability to attribute actions leading to further problems in solving problematic situations in the grid and avoid its repeatability
+- slower incident response because of the lost trustworthiness of logs
+- compliance violation 
+- inability to understand whether an attacker accessed the data and disclosed them","- centralized and immutable logging system
+- individual accounts only
+- cryptographic protected logs e.g. signed chains or hash chains
+- authenticated time source
+- session recording for admin accounts"
+cloud storage,I,Information Disclosure,"- exposure and download of confidential data about the grid because of access control misconfiguration
+ - metadata disclosure revealing system architecture and business operations","- Specific data about the smart grid could help the attacker in planning a complete attack on the smart grid having a detailed info about the system. The grid is not directly impacted by this, but there can be problems with regulations compliace
+-  Privacy violations in case the data are sensitive about the customers and not correctly protected 
+- Increased reconnaisance capabilities
+- disclosure of critical datasts for the EMS and monitoring systems can give the attacker information about the data used in the critical service and so help them in compromise the algorithms with FDI
+- disclosure of historical data about point of failure revealing the weknesses of the system","- encryption of data at rest and in transit, with mutual authentication to prevent impersonation
+- private endpoints
+- monitoring and alerting
+- key rotation and strong authentication policies for users"
+cloud storage,D,Denial of Service,"- API flooding from authorized or unauthorized users
+- exhaustion of storage quotas by introducing fake or useless data
+- ransomware attack
+- compromise of replication or backup process","- storage blocked, potential loss of information that should be saved while the storage is out of order
+- potential increasing inaccuracy of statistics calculated based on the data related to the grid
+- the system is not totally impacted, but it continuos in its critical functions","- high availability with multi-region replication and availability zones
+- disaster recovery procedures
+- rate limiting, quotas and alerting
+- capacity monitoring and latency monitoring
+- randomware protection with immutable snapshots, versioning and object locks"
+cloud storage,E,Elevation of Privilege,"- abuse of permissive roles
+- misconfigured access policies
+- compromise of cloud admin account
+- priviledge escalation for cloud permissions","- full control of storage resources, possibility to delete it, removing all the data, alter security controls, compromising accounts, controlling storage resources. The storage can be lost while the rest of the system continuous working.","- fine grained IAM with least privilege principle and deny by default
+- strong separation of duties between storage admin, backups operator and application owner
+- strong and tested authentication mechanisms 
+- continuous permission analysis
+- monitoring to detect privilege changes 
+- automatic compliance checks"
+terraform and helm manifests,S,Spoofing,"- By spoofing credentials or API keys, manifests are introduced as legitimate while they are not. Also inserting these manifests in the backup service would lead to this result if the backup is executed.
+- Development identities impersonate production deployment identities","Unatuthorized infrastructure definitions are trusted, malicious manifests are executed. Operational services such as monitoring EMS or high-level PDC analysis are completely compromised","- strong identity management with MFA, SSO and PAM
+- workload identity with dedicated GitOps, short-lived tokens and identity federation
+- signed artifacts, in particular commits and tags
+- repository protection with protected banches, trusted mirrors and repository pinning
+- separate credentials for the different roles"
+terraform and helm manifests,T,Tampering,"- changes of existing configurations manipultating for example security rules (firewalls, network segmentation, permissione, storage) 
+- substitution of configuration with malicious manifests 
+- manipulation of Terraform state files causes incorrect resource management","the attacker reduces the security of the machines in the system, he can also open backdoors and expand the attack surface taking the control of the system. this could affect the state-estimation supporting services or disrupt PMU data aggregation reducing operator situational awareness","- single source of truth and GitOps automated reconciliation
+- sined configurations, in partocular commits and helm charts
+- mandarory reviews and approval
+- policy as a code with tools such as OPA Gatekeeper
+- encrypted terraform state and versioned state files
+- drift detection"
+terraform and helm manifests,R,Repudiation,"- inability to determine who did changes 
+- missing version control
+- no audit trails or signed commits
+- shared identities among multiple actors using common credentials
+- unsined changes, so that the commits cannot be attributed
+- missing version history because changes are not tracked","- no accountability
+- harder to discover attacks and also prevent new ones
+- recovery becomes slower
+- difficulty in resoring trusted configuration because of the difficulty to restore the last good-state, this leaves the services vulnerable for a bigger period of time","- version control with Git repositories and immutable history
+- centralized logging system ensuring immutability
+- no shared accounts
+- time synchronization for logs and signing, coming from a trusted source"
+terraform and helm manifests,I,Information Disclosure,"- unauthorized access to manifests repositories
+- exposure of configuration of deployment and architecure information
+- Leakage of embedded secrets, network topology and service relationships
+- tags, naming conventions, labelr and general metadata disclosure
+- backup repository made public","- attacker discovers important information about the system that could be used for exploiting other vulnerabilities, eg. knowning EMS supporting infrastructure it is possible to target it to disrupt the general state estimation service for the whole grid
+- exposed secrets could grant access to other parts of the system, thus increasing the blast radius of the attack","- strong RBAC policies with proper role separation and least privilege principle
+- secret references instead of real secrets exposure
+- encryption of configurations at rest and mutual TLS for its communication to other entities"
+terraform and helm manifests,D,Denial of Service,x,x,x
+terraform and helm manifests,E,Elevation of Privilege,x,x,x

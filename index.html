@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>CSV Table</title>
+
+    <!-- jQuery -->
+    <script src="https://code.jquery.com/jquery-3.7.1.min.js"></script>
+
+    <!-- DataTables -->
+    <link rel="stylesheet"
+          href="https://cdn.datatables.net/2.3.2/css/dataTables.dataTables.css">
+
+    <script src="https://cdn.datatables.net/2.3.2/js/dataTables.js"></script>
+
+    <!-- PapaParse -->
+    <script src="https://cdn.jsdelivr.net/npm/papaparse@5.4.1/papaparse.min.js"></script>
+</head>
+
+<body>
+
+<h1>Complete STRIDE analysis</h1>
+
+<table id="myTable" class="display"></table>
+
+<script>
+Papa.parse("data/normalized_stride.csv", {
+    download: true,
+    header: true,
+    skipEmptyLines: true,
+
+    complete: function(results) {
+
+        const data = results.data;
+
+        const columns = results.meta.fields.map(col => ({
+            title: col,
+            data: col
+        }));
+
+        new DataTable("#myTable", {
+            data: data,
+            columns: columns,
+
+            columnDefs: [
+                {
+                    targets: "_all",
+                    render: function(data) {
+
+                        if (typeof data !== "string") return data;
+
+                        let first = true;
+
+                        return data.replace(/- /g, (match) => {
+                            if (first) {
+                                first = false;
+                                return match; // primo "- " invariato
+                            }
+                            return "<br>- ";
+                        });
+
+                    }
+                }
+            ]
+        });
+
+    }
+});
+</script>
+
+</body>
+</html>
