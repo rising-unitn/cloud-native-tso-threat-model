@@ -41,6 +41,10 @@ Papa.parse("data/normalized_stride.csv", {
             data: data,
             columns: columns,
 
+            paging: false,
+            info: false,
+            lengthChange: false,
+
             columnDefs: [
                 {
                     targets: "_all",
