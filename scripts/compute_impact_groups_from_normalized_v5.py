@@ -1,9 +1,4 @@
 #!/usr/bin/env python3
-"""
-Compute operational-impact recurrence groups from a normalized STRIDE CSV.
-Each group is counted at most once per (asset, STRIDE category).
-The output is a recurrence view, not a risk/severity assessment.
-"""
 
 import argparse
 import csv
